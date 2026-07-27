@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Text Messages</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+  :root {
+    --ink: #1b1f23;
+    --muted: #667085;
+    --line: #e4e7ec;
+    --bg: #f8fafc;
+    --accent: #2a5b52;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 20px;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h2 { font-size: 1rem; color: var(--muted); margin: 24px 0 8px; }
+  .thread {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .bubble {
+    max-width: 70%;
+    padding: 8px 12px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+  }
+  .from-garage {
+    align-self: flex-end;
+    background: var(--accent);
+    color: white;
+  }
+  .from-customer {
+    align-self: flex-start;
+    background: var(--bg);
+    border: 1px solid var(--line);
+  }
+  .timestamp {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    margin-top: 4px;
+  }
+  .empty, .error {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 0;
+  }
+  .error { color: #b42318; }
+</style>
+</head>
+<body>
+  <div id="app">Loading…</div>
+
+  <script>
+    async function load() {
+      const app = document.getElementById("app");
+      try {
+        const res = await fetch("/api/messages");
+        const data = await res.json();
+
+        if (!res.ok) {
+          app.innerHTML = '<div class="error">Could not load messages: ' + data.error + '</div>';
+          return;
+        }
+
+        if (data.messages.length === 0) {
+          app.innerHTML = '<div class="empty">No text conversations yet.</div>';
+          return;
+        }
+
+        // Group messages by the other party's number
+        const groups = new Map();
+        for (const msg of data.messages) {
+          const other = msg.from === data.garageNumber ? msg.to : msg.from;
+          if (!groups.has(other)) groups.set(other, []);
+          groups.get(other).push(msg);
+        }
+
+        let html = "";
+        for (const [customerNumber, messages] of groups) {
+          html += "<h2>" + customerNumber + "</h2><div class='thread'>";
+          for (const msg of messages) {
+            const isGarage = msg.from === data.garageNumber;
+            const cls = isGarage ? "from-garage" : "from-customer";
+            const when = new Date(msg.dateSent).toLocaleString();
+            html +=
+              '<div class="bubble ' + cls + '">' +
+              escapeHtml(msg.body) +
+              '<div class="timestamp">' + when + '</div>' +
+              '</div>';
+          }
+          html += "</div>";
+        }
+        app.innerHTML = html;
+      } catch (err) {
+        app.innerHTML = '<div class="error">Something went wrong loading messages.</div>';
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement("div");
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    load();
+  </script>
+</body>
+</html>
