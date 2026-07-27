@@ -1,7 +1,10 @@
+// This runs on Vercel's servers, never in the visitor's browser — so your
+// Twilio Auth Token stays hidden even though this page has no login.
+
 export default async function handler(req, res) {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
-  const garageNumber = process.env.TWILIO_NUMBER;
+  const garageNumber = (process.env.TWILIO_NUMBER || "").replace(/\s+/g, "");
 
   if (!sid || !token || !garageNumber) {
     res.status(500).json({ error: "Missing Twilio environment variables." });
